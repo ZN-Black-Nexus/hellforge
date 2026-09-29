@@ -165,6 +165,8 @@ dll!("kernel32" {
     pub fn GetNumberOfConsoleInputEvents(h: HANDLE, n: *mut u32) -> BOOL;
     pub fn ReadConsoleInputW(h: HANDLE, buf: *mut INPUT_RECORD, n: u32, read: *mut u32) -> BOOL;
     pub fn GetConsoleScreenBufferInfo(h: HANDLE, info: *mut CONSOLE_SCREEN_BUFFER_INFO) -> BOOL;
+    pub fn GetCurrentProcess() -> HANDLE;
+    pub fn K32GetProcessMemoryInfo(p: HANDLE, counters: *mut usize, cb: u32) -> BOOL;
 });
 
 dll!("user32" {
@@ -225,14 +227,31 @@ pub fn sleep_us(us: u64) {
     unsafe { Sleep((us / 1000) as u32) }
 }
 
-/// ASCII/UTF-8 bytes -> NUL-terminated UTF-16 in `out`.
+/// UTF-8 bytes -> NUL-terminated UTF-16 in `out` (cut off if too long).
 pub fn wide<'a>(s: &[u8], out: &'a mut [u16]) -> &'a [u16] {
-    let n = s.len().min(out.len() - 1);
-    for i in 0..n {
-        out[i] = s[i] as u16;
+    let text = core::str::from_utf8(s).unwrap_or("?");
+    let mut n = 0;
+    for ch in text.chars() {
+        let mut buf = [0u16; 2];
+        let e = ch.encode_utf16(&mut buf);
+        if n + e.len() >= out.len() {
+            break;
+        }
+        out[n..n + e.len()].copy_from_slice(e);
+        n += e.len();
     }
     out[n] = 0;
     &out[..n + 1]
+}
+
+/// UTF-16 (up to a NUL) -> UTF-8 bytes appended to `out`.
+pub fn narrow<const N: usize>(w: &[u16], out: &mut crate::platform::Buf<N>) {
+    let end = w.iter().position(|&c| c == 0).unwrap_or(w.len());
+    for ch in core::char::decode_utf16(w[..end].iter().copied()) {
+        let ch = ch.unwrap_or('?');
+        let mut buf = [0u8; 4];
+        out.push(ch.encode_utf8(&mut buf).as_bytes());
+    }
 }
 
 pub fn stdout_write(h: HANDLE, b: &[u8]) -> bool {
