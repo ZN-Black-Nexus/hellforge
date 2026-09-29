@@ -1,0 +1,16 @@
+[package]
+name = "hellforge"
+description = "A tiny pure-Rust game engine for super-lightweight games that run on almost anything"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+build = "build.rs"
+
+[lib]
+path = "src/lib.rs"
+bench = false
+
+[dependencies]
+hellforge-rt = { path = "../hellforge-rt" }

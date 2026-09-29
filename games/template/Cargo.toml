@@ -1,0 +1,16 @@
+[package]
+name = "template"
+description = "The smallest useful Hellforge game: copy this folder to start a new one"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "template"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+hellforge = { path = "../../crates/hellforge" }
