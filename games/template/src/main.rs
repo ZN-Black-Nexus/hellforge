@@ -17,15 +17,15 @@ const HERO: Sprite = sprite![
     ".aa..aa.",
 ];
 
-struct Template {
+struct MyGame {
     pos: Vec2,
 }
 
-impl Game for Template {
+impl Game for MyGame {
     const TITLE: &'static str = "Template";
 
     fn new(ctx: &mut Ctx) -> Self {
-        Template { pos: vec2(ctx.width() / 2, ctx.height() / 2) }
+        MyGame { pos: vec2(ctx.width() / 2, ctx.height() / 2) }
     }
 
     fn update(&mut self, ctx: &mut Ctx) {
@@ -47,4 +47,4 @@ impl Game for Template {
     }
 }
 
-hellforge::main!(Template);
+hellforge::main!(MyGame);
