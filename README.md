@@ -77,7 +77,8 @@ cargo run -q -p snake -- --frames 90 --input "right:30 a down:20" \
 | Assets | Sprites and maps as ASCII art in your code (`sprite!`, `tilemap!`), checked at compile time |
 | Input | Virtual buttons (arrows/WASD + Z X C V, Enter, Tab) with pressed/held/released, raw keys, mouse (position, buttons, wheel, captured mouse look) |
 | Maths | `Vec2`, `Rect`, `sqrt`/`sin`/`cos`/`atan2`/`pow`/... for `f32` in pure Rust (identical on every CPU), random numbers |
-| Game help | Tile grids with box collision (`move_box`), sprite animation, saves |
+| 3D | A first-person view of any tile map (raycaster): textured walls, floor and ceiling with fog, sprites standing in the world |
+| Game help | Tile grids with box collision (`move_box`), first-person movement and rays, sprite animation, saves |
 | Memory | `Vec`, `String`, `Box`, `format!` through a small built-in allocator |
 | Testing | `--frames`, `--input` scripts, `--shot` PNG, `--ascii`, `--hash`, `--debug`, `--bench` |
 
@@ -103,7 +104,8 @@ RAM.
 crates/hellforge      the engine (no_std): drawing, input, maths, runner, platforms
 crates/hellforge-rt   memcpy and friends in Rust (no libc anywhere)
 games/                one crate per game: template (the starting point), bricks
-                      (breakout), jumper (platformer), starsweep (shooter)
+                      (breakout), jumper (platformer), starsweep (shooter),
+                      crypt (first-person dungeon)
 scripts/              new-game, build-all, test-qemu, tool fetching
 AGENTS.md             the guide for AI agents (and humans)
 ```

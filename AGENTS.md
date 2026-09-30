@@ -61,6 +61,7 @@ score, state) - use it to check logic.
 | `games/template` | The minimum: a sprite moved with the arrows. |
 | `games/bricks` | Breakout: a tile map used as colour data, a mutable `Grid`, ball physics in sub-steps, keys or mouse, particles, saving a best score. |
 | `games/jumper` | Platformer: `Grid::move_box`, gravity, coyote time, jump buffering, coins, spikes, enemies that turn at ledges, a scrolling camera, parallax, animated and flipped sprites. |
+| `games/crypt` | First-person 3D dungeon: `raycast`, textured walls, `billboards`, `move_circle`, hitscan with `cast_ray`, enemies using `line_of_sight`, a minimap, mouse look. |
 | `games/starsweep` | Shooter: many objects in `Vec`s, spawning waves, aimed enemy shots, hit flashes (`sprite_tinted`), invulnerability blinking, difficulty over time. |
 
 ### Headless options
@@ -176,6 +177,25 @@ let (tx, ty) = grid.find(b'P').unwrap();       // tile coordinates
 grid.set(tx, ty, b'.');
 // move a box, sliding along walls; `hit.bottom` = standing on ground
 let hit = grid.move_box(&mut pos, &mut vel, vec2(6, 8), 8, |t| t == b'#');
+```
+
+**First-person 3D** (see `games/crypt`): positions in tile units (1.0 = one
+tile), angles in radians.
+
+```rust
+let mut cam = Camera3d::new(vec2(1.5, 1.5), 0.0);        // .pos .angle .fov .fog
+// update
+cam.angle += ctx.axis_x() as f32 * 0.05;                  // turn
+let step = cam.forward() * (-ctx.axis_y() as f32 * 0.06); // walk (cam.right() to side-step)
+grid.move_circle(&mut cam.pos, step, 0.25, |t| t == b'#');
+if let Some(hit) = grid.cast_ray(cam.pos, cam.forward(), 20.0, |t| t == b'#') { /* hit.dist, hit.tile */ }
+grid.line_of_sight(enemy_pos, cam.pos, |t| t == b'#');   // can it see you?
+// draw: first the walls, then sprites standing in the world
+g.raycast(&grid, &cam, DARK_GRAY, BROWN, |t| match t {
+    b'#' => Wall::Texture(&BRICK),   // any sprite; or Wall::Color(RED)
+    _ => Wall::Empty,
+});
+g.billboards(&cam, &mut [Billboard { size: 0.8, ..Billboard::new(&GHOST, ghost_pos) }]);
 ```
 
 **Maths**: `Vec2` (`vec2(x, y)`, `+ - * /`, `length()`, `normalized()`,
