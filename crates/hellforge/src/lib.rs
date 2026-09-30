@@ -69,6 +69,7 @@ pub mod gfx;
 #[doc(hidden)]
 pub mod heap;
 pub mod input;
+pub mod kit;
 pub mod math;
 #[doc(hidden)]
 pub mod platform;
@@ -120,6 +121,7 @@ pub mod prelude {
     pub use crate::color::*;
     pub use crate::font::{CHAR_H, CHAR_W, LINE_H};
     pub use crate::input::{Button, Key, Mouse, MouseButton};
+    pub use crate::kit::{Menu, Particle, Particles, Shake, ease_in, ease_in_out, ease_out, ease_out_back, ease_out_bounce};
     pub use crate::math::{Float, Num, Rect, Vec2, approach, isqrt, lerp, rect, vec2, wrap, wrapi};
     pub use crate::ray::{Billboard, Camera3d, Wall};
     pub use crate::rng::Rng;
