@@ -1,0 +1,16 @@
+[package]
+name = "bricks"
+description = "Bricks: a small breakout game made with Hellforge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "bricks"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+hellforge = { path = "../../crates/hellforge" }

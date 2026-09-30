@@ -533,6 +533,9 @@ fn headless<G: Game>(r: &mut Runner<G>, host: &mut dyn Host, a: &Args) -> i32 {
         }
         left = left.saturating_sub(1);
         r.update();
+        if a.bench {
+            r.render(); // measure drawing too
+        }
         ran = f + 1;
         if a.every > 0 && (f + 1) % a.every == 0 {
             if let Some(path) = a.shot {
@@ -584,7 +587,7 @@ fn headless<G: Game>(r: &mut Runner<G>, host: &mut dyn Host, a: &Args) -> i32 {
         #[cfg(test)]
         let (used, peak, size) = (0, 0, 0);
         let mut b: Buf<256> = Buf::new();
-        b.push(b"frames ").num(ran as u64).push(b"  total ").num(dt / 1000).push(b" ms  per update ");
+        b.push(b"frames ").num(ran as u64).push(b"  total ").num(dt / 1000).push(b" ms  per update+draw ");
         b.num(dt / ran.max(1) as u64).push(b" us  peak RSS ").num(host.peak_rss_kb()).push(b" KiB  heap ");
         b.num(used as u64 / 1024).push(b"/").num(peak as u64 / 1024).push(b"/").num(size as u64 / 1024);
         b.push(b" KiB (now/peak/size)\n");

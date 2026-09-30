@@ -3,6 +3,13 @@
 version = 4
 
 [[package]]
+name = "bricks"
+version = "0.1.0"
+dependencies = [
+ "hellforge",
+]
+
+[[package]]
 name = "hellforge"
 version = "0.1.0"
 dependencies = [
@@ -12,6 +19,20 @@ dependencies = [
 [[package]]
 name = "hellforge-rt"
 version = "0.1.0"
+
+[[package]]
+name = "jumper"
+version = "0.1.0"
+dependencies = [
+ "hellforge",
+]
+
+[[package]]
+name = "starsweep"
+version = "0.1.0"
+dependencies = [
+ "hellforge",
+]
 
 [[package]]
 name = "template"
