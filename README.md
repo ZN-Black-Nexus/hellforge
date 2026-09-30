@@ -7,13 +7,13 @@ written as text, and a headless mode that lets an agent run a game and look at
 its screen without a display.
 
 * **One file per game and platform.** A game builds to a single static
-  binary: Linux on almost any CPU without libc, Windows without a C runtime,
-  macOS linking only `libSystem`. No data files, no dependencies.
+  binary: Linux on almost any CPU without libc, and Windows without a C runtime
+  (macOS is still to come). No data files, no dependencies.
 * **Tiny.** No heap needed by the engine; the screen is 8 bits per pixel; a
   game runs in a few hundred KB of RAM.
 * **Runs anywhere there's a screen or a terminal:** an X11 window (also
-  XWayland and `ssh -X`), the Linux framebuffer, a native Windows or macOS
-  window, or any terminal, including over SSH.
+  XWayland and `ssh -X`), the Linux framebuffer, a native Windows window, or
+  any terminal, including over SSH.
 * **Made for AI agents** (and people): see [AGENTS.md](AGENTS.md).
 
 ```rust
@@ -92,15 +92,18 @@ scripts/build-all.sh template     # every OS and CPU into dist/
 scripts/test-qemu.sh template     # run the Linux builds on every CPU under qemu
 ```
 
-The per-target linker settings live in `.cargo/config.toml`; Windows and
-macOS binaries are built from Linux without their SDKs.
+The per-target linker settings live in `.cargo/config.toml`; Windows
+binaries are built from Linux without its SDK. The template is about 125 KB
+on Linux (static, no libc) and 90 KB on Windows, and runs in about 200 KB of
+RAM.
 
 ## Layout
 
 ```
 crates/hellforge      the engine (no_std): drawing, input, maths, runner, platforms
 crates/hellforge-rt   memcpy and friends in Rust (no libc anywhere)
-games/                one crate per game; games/template is the starting point
+games/                one crate per game: template (the starting point), bricks
+                      (breakout), jumper (platformer), starsweep (shooter)
 scripts/              new-game, build-all, test-qemu, tool fetching
 AGENTS.md             the guide for AI agents (and humans)
 ```

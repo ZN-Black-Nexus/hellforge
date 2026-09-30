@@ -54,6 +54,15 @@ base colours (hex digits, same as in `sprite!`). `--ascii 160` gives more
 detail. `--debug` prints whatever your `Game::debug` writes (positions,
 score, state) - use it to check logic.
 
+### Example games to copy from
+
+| Game | Shows |
+|---|---|
+| `games/template` | The minimum: a sprite moved with the arrows. |
+| `games/bricks` | Breakout: a tile map used as colour data, a mutable `Grid`, ball physics in sub-steps, keys or mouse, particles, saving a best score. |
+| `games/jumper` | Platformer: `Grid::move_box`, gravity, coyote time, jump buffering, coins, spikes, enemies that turn at ledges, a scrolling camera, parallax, animated and flipped sprites. |
+| `games/starsweep` | Shooter: many objects in `Vec`s, spawning waves, aimed enemy shots, hit flashes (`sprite_tinted`), invulnerability blinking, difficulty over time. |
+
 ### Headless options
 
 | Option | Meaning |
@@ -229,8 +238,8 @@ g.camera(self.shake.0, self.shake.1);
 ## Building for every platform
 
 `scripts/build-all.sh NAME` builds the game for Linux (30 CPUs, static, no
-libc), Windows (x86_64, x86, ARM64) and macOS (universal) into `dist/`. It
-needs `scripts/fetch-tools.sh` once (nightly Rust and a few linkers).
+libc) and Windows (x86_64, x86, ARM64) into `dist/` (macOS is not supported
+yet). It needs `scripts/fetch-tools.sh` once (nightly Rust and a few linkers).
 `scripts/test-qemu.sh NAME` runs it on every CPU under qemu and compares the
 `--hash` with the native build.
 
