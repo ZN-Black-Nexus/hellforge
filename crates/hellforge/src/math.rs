@@ -74,6 +74,9 @@ fn fsin(x: f32) -> f32 {
     if !x.is_finite() {
         return f32::NAN;
     }
+    if fabs(x) > 16_777_215.0 {
+        return 0.0; // no precision left at this size
+    }
     let (r, j, mut neg) = reduce(fabs(x));
     if x < 0.0 {
         neg = !neg;
@@ -86,6 +89,9 @@ fn fsin(x: f32) -> f32 {
 fn fcos(x: f32) -> f32 {
     if !x.is_finite() {
         return f32::NAN;
+    }
+    if fabs(x) > 16_777_215.0 {
+        return 0.0; // no precision left at this size
     }
     let (r, j, mut neg) = reduce(fabs(x));
     if j > 1 {
@@ -382,26 +388,39 @@ pub fn isqrt(v: u32) -> u32 {
 // ---------------------------------------------------------------- Num
 
 /// Numbers that can be used as screen coordinates or sizes: all integer types
-/// and `f32`/`f64` (rounded down to the pixel).
+/// and `f32`/`f64` (rounded down to the pixel). Values are limited to
+/// +-[`COORD_LIMIT`] (and NaN counts as 0), so wild numbers can't overflow.
 pub trait Num: Copy {
     fn to_i32(self) -> i32;
     fn to_f32(self) -> f32;
 }
 
-macro_rules! num_int {
+/// The largest coordinate drawing functions work with (far beyond any screen).
+pub const COORD_LIMIT: i32 = 1 << 20;
+
+macro_rules! num_signed {
     ($($t:ty)*) => {$(
         impl Num for $t {
-            #[inline] fn to_i32(self) -> i32 { self as i32 }
+            #[inline] fn to_i32(self) -> i32 { (self as i64).clamp(-(COORD_LIMIT as i64), COORD_LIMIT as i64) as i32 }
             #[inline] fn to_f32(self) -> f32 { self as f32 }
         }
     )*};
 }
-num_int!(i8 i16 i32 i64 isize u8 u16 u32 u64 usize);
+macro_rules! num_unsigned {
+    ($($t:ty)*) => {$(
+        impl Num for $t {
+            #[inline] fn to_i32(self) -> i32 { (self as u64).min(COORD_LIMIT as u64) as i32 }
+            #[inline] fn to_f32(self) -> f32 { self as f32 }
+        }
+    )*};
+}
+num_signed!(i8 i16 i32 i64 isize);
+num_unsigned!(u8 u16 u32 u64 usize);
 
 impl Num for f32 {
     #[inline]
     fn to_i32(self) -> i32 {
-        ffloor(self) as i32
+        ffloor(self).clamp(-(COORD_LIMIT as f32), COORD_LIMIT as f32) as i32
     }
     #[inline]
     fn to_f32(self) -> f32 {
@@ -412,7 +431,7 @@ impl Num for f32 {
 impl Num for f64 {
     #[inline]
     fn to_i32(self) -> i32 {
-        ffloor(self as f32) as i32
+        (self as f32).to_i32()
     }
     #[inline]
     fn to_f32(self) -> f32 {

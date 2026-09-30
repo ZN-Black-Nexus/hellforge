@@ -164,13 +164,17 @@ impl Grid {
     /// Does the rectangle (in pixels, tiles `tile` pixels square) touch any
     /// tile for which `solid` is true? Outside the grid counts as the `0` tile.
     pub fn rect_hits(&self, r: Rect, tile: i32, solid: impl Fn(u8) -> bool) -> bool {
-        let ts = tile as f32;
-        let x0 = crate::math::Num::to_i32(r.x / ts);
-        let y0 = crate::math::Num::to_i32(r.y / ts);
-        let x1 = crate::math::Num::to_i32((r.x + r.w - 0.001) / ts);
-        let y1 = crate::math::Num::to_i32((r.y + r.h - 0.001) / ts);
-        for ty in y0..=y1 {
-            for tx in x0..=x1 {
+        let ts = tile.max(1) as f32;
+        let x0 = Num::to_i32(r.x / ts);
+        let y0 = Num::to_i32(r.y / ts);
+        let x1 = Num::to_i32((r.x + r.w - 0.001) / ts);
+        let y1 = Num::to_i32((r.y + r.h - 0.001) / ts);
+        // Everything outside the grid is the `0` tile: check it once.
+        if (x0 < 0 || y0 < 0 || x1 >= self.w || y1 >= self.h) && solid(0) {
+            return true;
+        }
+        for ty in y0.max(0)..=y1.min(self.h - 1) {
+            for tx in x0.max(0)..=x1.min(self.w - 1) {
                 if solid(self.get(tx, ty)) {
                     return true;
                 }
@@ -262,7 +266,10 @@ impl Grid {
         let mut hit = Hit::default();
         let ts = tile as f32;
         // Move in steps no longer than half a tile so fast objects can't tunnel.
-        let steps = ((vel.x.abs().max(vel.y.abs()) / (ts * 0.5)) as i32 + 1).max(1);
+        if !(vel.x.is_finite() && vel.y.is_finite()) {
+            *vel = Vec2::ZERO;
+        }
+        let steps = ((vel.x.abs().max(vel.y.abs()) / (ts * 0.5)) as i32 + 1).clamp(1, 1024);
         let (sx, sy) = (vel.x / steps as f32, vel.y / steps as f32);
         for _ in 0..steps {
             if sx != 0.0 && !hit.left && !hit.right {

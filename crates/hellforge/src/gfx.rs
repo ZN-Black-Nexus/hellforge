@@ -214,7 +214,7 @@ impl Gfx {
         if y < y0 || y >= y1 {
             return;
         }
-        let (a, b) = (xa.max(x0), (xb + 1).min(x1));
+        let (a, b) = (xa.max(x0), xb.saturating_add(1).min(x1));
         if a < b {
             let row = (y * self.w) as usize;
             self.px[row + a as usize..row + b as usize].fill(c);
@@ -239,8 +239,31 @@ impl Gfx {
     /// A one-pixel line from (x0, y0) to (x1, y1), both ends included.
     pub fn line(&mut self, x0: impl Num, y0: impl Num, x1: impl Num, y1: impl Num, c: u8) {
         let c = self.remap[c as usize];
-        let (mut x, mut y) = (x0.to_i32() - self.cam.0, y0.to_i32() - self.cam.1);
-        let (x1, y1) = (x1.to_i32() - self.cam.0, y1.to_i32() - self.cam.1);
+        let (ax, ay) = (x0.to_i32() - self.cam.0, y0.to_i32() - self.cam.1);
+        let (bx, by) = (x1.to_i32() - self.cam.0, y1.to_i32() - self.cam.1);
+        // Cut the line down to the visible area first (Liang-Barsky).
+        let (cx0, cy0, cx1, cy1) = (self.clip.0 as f32 - 1.0, self.clip.1 as f32 - 1.0, self.clip.2 as f32, self.clip.3 as f32);
+        let (fx, fy, gx, gy) = (ax as f32, ay as f32, (bx - ax) as f32, (by - ay) as f32);
+        let (mut t0, mut t1) = (0.0f32, 1.0f32);
+        for (p, q) in [(-gx, fx - cx0), (gx, cx1 - fx), (-gy, fy - cy0), (gy, cy1 - fy)] {
+            if p == 0.0 {
+                if q < 0.0 {
+                    return; // parallel and outside
+                }
+            } else {
+                let r = q / p;
+                if p < 0.0 {
+                    t0 = t0.max(r);
+                } else {
+                    t1 = t1.min(r);
+                }
+            }
+        }
+        if t0 > t1 {
+            return;
+        }
+        let (mut x, mut y) = ((fx + gx * t0).round() as i32, (fy + gy * t0).round() as i32);
+        let (x1, y1) = ((fx + gx * t1).round() as i32, (fy + gy * t1).round() as i32);
         let (dx, dy) = ((x1 - x).abs(), -(y1 - y).abs());
         let (sx, sy) = (if x < x1 { 1 } else { -1 }, if y < y1 { 1 } else { -1 });
         let mut err = dx + dy;
@@ -274,7 +297,7 @@ impl Gfx {
         let (sx, sy) = (x - self.cam.0, y - self.cam.1);
         self.span(sx, sx + w - 1, sy, c2);
         self.span(sx, sx + w - 1, sy + h - 1, c2);
-        for yy in sy + 1..sy + h - 1 {
+        for yy in (sy + 1).max(self.clip.1)..(sy + h - 1).min(self.clip.3) {
             self.put(sx, yy, c2);
             self.put(sx + w - 1, yy, c2);
         }
@@ -294,8 +317,8 @@ impl Gfx {
 
     /// Outline of a circle centred on (cx, cy).
     pub fn circle(&mut self, cx: impl Num, cy: impl Num, r: impl Num, c: u8) {
-        let (cx, cy, r) = (cx.to_i32() - self.cam.0, cy.to_i32() - self.cam.1, r.to_i32());
-        if r < 0 {
+        let (cx, cy, r) = (cx.to_i32() - self.cam.0, cy.to_i32() - self.cam.1, r.to_i32().min(1 << 14));
+        if r < 0 || cx + r < self.clip.0 || cx - r >= self.clip.2 || cy + r < self.clip.1 || cy - r >= self.clip.3 {
             return;
         }
         let c = self.remap[c as usize];
@@ -316,12 +339,12 @@ impl Gfx {
 
     /// Filled circle centred on (cx, cy).
     pub fn fill_circle(&mut self, cx: impl Num, cy: impl Num, r: impl Num, c: u8) {
-        let (cx, cy, r) = (cx.to_i32() - self.cam.0, cy.to_i32() - self.cam.1, r.to_i32());
+        let (cx, cy, r) = (cx.to_i32() - self.cam.0, cy.to_i32() - self.cam.1, r.to_i32().min(1 << 14));
         if r < 0 {
             return;
         }
         let c = self.remap[c as usize];
-        for dy in -r..=r {
+        for dy in (-r).max(self.clip.1 - cy)..=r.min(self.clip.3 - 1 - cy) {
             let dx = crate::math::isqrt((r * r - dy * dy) as u32 + r as u32) as i32;
             self.span(cx - dx, cx + dx, cy + dy, c);
         }
@@ -405,7 +428,7 @@ impl Gfx {
 
     /// Text with every font pixel drawn as a `scale` x `scale` block.
     pub fn text_scaled(&mut self, x: impl Num, y: impl Num, s: &str, c: u8, scale: i32) -> i32 {
-        let scale = scale.max(1);
+        let scale = scale.clamp(1, 256);
         let c = self.remap[c as usize];
         let (x0, mut y) = (x.to_i32() - self.cam.0, y.to_i32() - self.cam.1);
         let mut x = x0;
@@ -462,7 +485,7 @@ impl Gfx {
     // ------------------------------------------------------------ sprites
 
     fn blit_sprite(&mut self, s: &Sprite, x: i32, y: i32, flip_x: bool, flip_y: bool, scale: i32, tint: Option<u8>) {
-        let scale = scale.max(1);
+        let scale = scale.clamp(1, 256);
         let (bx, by) = (x - self.cam.0, y - self.cam.1);
         for sy in 0..s.h {
             let src_y = if flip_y { s.h - 1 - sy } else { sy };
@@ -531,10 +554,11 @@ impl Gfx {
 
     /// Draw a raw image (`w` x `h` colours, row by row; `TRANSPARENT` skipped).
     pub fn blit(&mut self, pixels: &[u8], w: impl Num, h: impl Num, x: impl Num, y: impl Num) {
-        let (w, h) = (w.to_i32(), h.to_i32());
+        let w = w.to_i32().max(1);
+        let h = h.to_i32().min(pixels.len() as i32 / w);
         let (bx, by) = (x.to_i32() - self.cam.0, y.to_i32() - self.cam.1);
-        for yy in 0..h {
-            for xx in 0..w {
+        for yy in (self.clip.1 - by).max(0)..(self.clip.3 - by).min(h) {
+            for xx in (self.clip.0 - bx).max(0)..(self.clip.2 - bx).min(w) {
                 let i = (yy * w + xx) as usize;
                 if i < pixels.len() && pixels[i] != TRANSPARENT {
                     let c = self.remap[pixels[i] as usize];
@@ -576,7 +600,7 @@ impl Gfx {
         tile: i32,
         mut draw: impl FnMut(&mut Gfx, u8, i32, i32),
     ) {
-        let tile = tile.max(1);
+        let tile = tile.clamp(1, 4096);
         // only the tiles that can be visible through the camera
         let tx0 = ((self.cam.0 - x).div_euclid(tile)).max(0);
         let ty0 = ((self.cam.1 - y).div_euclid(tile)).max(0);
@@ -644,3 +668,64 @@ macro_rules! text {
 
 /// The glyph height, for layout: one line of text is `CHAR_H` pixels tall.
 pub const TEXT_HEIGHT: i32 = CHAR_H;
+
+#[cfg(test)]
+mod tests {
+    extern crate std;
+    use super::*;
+    use crate::ray::{Billboard, Camera3d, Wall};
+    use std::boxed::Box;
+    use std::vec;
+
+    fn screen() -> Gfx {
+        Gfx::new(Box::leak(vec![0u8; 64 * 48].into_boxed_slice()), 64, 48)
+    }
+
+    /// Games (and AI agents writing them) pass silly numbers sometimes:
+    /// drawing must never panic, whatever the coordinates.
+    #[test]
+    fn drawing_never_panics() {
+        let mut g = screen();
+        let ints = [i32::MIN, i32::MIN + 1, -100_000, -1, 0, 1, 31, 63, 64, 100_000, i32::MAX - 1, i32::MAX];
+        let floats = [f32::NEG_INFINITY, -1e30, -1e9, -0.5, 0.0, 0.5, 31.7, 1e9, 1e30, f32::INFINITY, f32::NAN];
+        const S: Sprite = crate::sprite!["7.", ".8"];
+        let grid = Grid::from_map(&crate::tilemap!["#.#", "...", "#.#"]);
+        for &a in &ints {
+            for &b in &ints {
+                g.pixel(a, b, 7);
+                g.line(a, b, b, a, 7);
+                g.rect(a, b, b, a, 7);
+                g.fill_rect(a, b, b, a, 7);
+                g.circle(a, b, b, 7);
+                g.fill_circle(a, b, (b % 200).abs(), 7);
+                g.fill_triangle(a, b, b, a, 0, 0, 7);
+                g.text(a, b, "Hi", 7);
+                g.text_scaled(a, b, "Hi", 7, (b % 50).abs());
+                g.sprite(&S, a, b);
+                g.sprite_scaled(&S, a, b, (b % 40).abs());
+                g.sprite_rotated(&S, a, b, 1.0);
+                g.camera(a, b);
+                g.tilemap(&crate::tilemap!["#."], 0, 0, (b % 30).abs().max(1), |g, _, x, y| g.pixel(x, y, 1));
+                g.camera(0, 0);
+                g.clip(a, b, b, a);
+                g.clip_reset();
+                let _ = g.get_pixel(a, b);
+            }
+        }
+        for &a in &floats {
+            for &b in &floats {
+                g.pixel(a, b, 7);
+                g.line(a, b, b, a, 7);
+                g.fill_rect(a, b, b, a, 7);
+                g.fill_circle(a, b, 3, 7);
+                g.fill_polygon(&[Vec2::new(a, b), Vec2::new(b, a), Vec2::new(0.0, 0.0)], 7);
+                g.sprite_rotated(&S, a, b, a);
+                let cam = Camera3d { pos: Vec2::new(a, b), angle: b, fov: 1.0, fog: 12.0 };
+                g.raycast(&grid, &cam, 1, 2, |t| if t == b'#' { Wall::Color(5) } else { Wall::Empty });
+                g.billboards(&cam, &mut [Billboard::new(&S, Vec2::new(b, a))]);
+            }
+        }
+        g.fade(2.0);
+        g.fade(f32::NAN);
+    }
+}

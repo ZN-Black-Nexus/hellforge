@@ -138,11 +138,11 @@ impl Gfx {
             for _ in 0..max_steps {
                 if tx < ty {
                     tx += ddx;
-                    mx += sx;
+                    mx = mx.wrapping_add(sx);
                     side = 0;
                 } else {
                     ty += ddy;
-                    my += sy;
+                    my = my.wrapping_add(sy);
                     side = 1;
                 }
                 match wall(grid.get(mx, my)) {
