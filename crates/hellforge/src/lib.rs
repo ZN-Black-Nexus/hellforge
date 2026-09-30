@@ -73,6 +73,7 @@ pub mod math;
 #[doc(hidden)]
 pub mod platform;
 pub mod png;
+pub mod ray;
 pub mod rng;
 #[doc(hidden)]
 pub mod runner;
@@ -120,9 +121,10 @@ pub mod prelude {
     pub use crate::font::{CHAR_H, CHAR_W, LINE_H};
     pub use crate::input::{Button, Key, Mouse, MouseButton};
     pub use crate::math::{Float, Num, Rect, Vec2, approach, isqrt, lerp, rect, vec2, wrap, wrapi};
+    pub use crate::ray::{Billboard, Camera3d, Wall};
     pub use crate::rng::Rng;
     pub use crate::sprite::{Sprite, anim};
-    pub use crate::tilemap::{Grid, Hit, Tilemap};
+    pub use crate::tilemap::{Grid, Hit, RayHit, Tilemap};
     pub use crate::{Ctx, Game, Gfx};
     pub use crate::{log, sprite, text, tilemap};
     pub use alloc::boxed::Box;

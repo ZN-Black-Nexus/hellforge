@@ -13,17 +13,20 @@ use crate::tilemap::{Grid, Tilemap};
 
 /// The drawing surface handed to `Game::draw`.
 pub struct Gfx {
-    px: &'static mut [u8],
-    w: i32,
-    h: i32,
+    pub(crate) px: &'static mut [u8],
+    pub(crate) w: i32,
+    pub(crate) h: i32,
     pal: [u8; 768],
-    remap: [u8; 256],
+    pub(crate) remap: [u8; 256],
     cam: (i32, i32),
-    clip: (i32, i32, i32, i32),
+    pub(crate) clip: (i32, i32, i32, i32),
     pub(crate) frame: u64,
     pub(crate) fps: u32,
     fade_key: [u32; 17],
-    fade: [[u8; 256]; 17],
+    /// `fade[n][c]`: colour `c` with brightness (16 - n) / 16.
+    pub(crate) fade: [[u8; 256]; 17],
+    /// Wall distance per screen column from the last `raycast`.
+    pub(crate) zbuf: alloc::vec::Vec<f32>,
 }
 
 fn default_palette() -> [u8; 768] {
@@ -58,6 +61,7 @@ impl Gfx {
             fps: 60,
             fade_key: [u32::MAX; 17],
             fade: [[0; 256]; 17],
+            zbuf: alloc::vec::Vec::new(),
         }
     }
 
@@ -159,6 +163,15 @@ impl Gfx {
             return;
         }
         let key = self.pal_hash();
+        self.ensure_dark(level, key);
+        let t = &self.fade[level];
+        for p in self.px.iter_mut() {
+            *p = t[*p as usize];
+        }
+    }
+
+    /// Build the darkening table for `level` (1..=16) if the palette changed.
+    pub(crate) fn ensure_dark(&mut self, level: usize, key: u32) {
         if self.fade_key[level] != key {
             let keep = (16 - level) as u32;
             for i in 0..256 {
@@ -175,13 +188,9 @@ impl Gfx {
             }
             self.fade_key[level] = key;
         }
-        let t = &self.fade[level];
-        for p in self.px.iter_mut() {
-            *p = t[*p as usize];
-        }
     }
 
-    fn pal_hash(&self) -> u32 {
+    pub(crate) fn pal_hash(&self) -> u32 {
         let mut h = 0x811c_9dc5u32;
         for &b in self.pal.iter() {
             h = (h ^ b as u32).wrapping_mul(0x0100_0193);
